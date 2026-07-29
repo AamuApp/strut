@@ -515,13 +515,6 @@ button {
   border-radius: 8px;
   transition: background 0.12s;
 }
-.hdr__object-back {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  justify-content: center;
-}
 .hdr__home:hover {
   background: var(--panel-2);
 }
@@ -634,9 +627,14 @@ button {
   min-height: 0;
   position: relative;
 }
+.editor__precision {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding-top: var(--editor-dock-height, 53px);
+}
 
-/* Object focus and spatial arranging are contextual tools inside the editor. The scrolling deck stays
-   mounted underneath, so close/Esc returns to the same card, caret, and scroll position. */
+/* Spatial arranging is a contextual tool over the primary precision editor. */
 .context-tool {
   position: absolute;
   inset: 0;
@@ -655,13 +653,7 @@ button {
 .context-tool--arrange {
   z-index: 75;
 }
-.context-tool--objects {
-  padding-top: var(--editor-dock-height, 53px);
-}
-
-/* Precision is a depth of the one editor, not a second routed mode. Once the user deliberately enters
-   it, the canvas can afford Bento-like working chrome: a narrow slide strip, the focused stage, and a
-   property rail. Leaving it returns to the untouched document column underneath. */
+/* Precision is the primary editor: a narrow slide strip, the focused stage, and a property rail. */
 .precision-workspace {
   position: relative;
   display: grid;
@@ -671,6 +663,11 @@ button {
   min-width: 0;
   min-height: 0;
   background: var(--stage);
+}
+.precision-workspace__empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
 }
 .precision-workspace__well,
 .precision-workspace__stage,

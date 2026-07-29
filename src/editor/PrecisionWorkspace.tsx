@@ -1,28 +1,28 @@
-// A contextual precision depth inside the single editor. The document column remains the primary
-// editor; this shell temporarily composes its resident slide well, focused canvas, and selection
-// inspector without introducing route/search state or another editor mode.
+// The primary deck editor: a resident slide well, focused canvas, and selection inspector. Slide
+// location stays in the route's `?slide=` state while object selection remains ephemeral.
 
 import { useCallback, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useEditor } from './EditorState'
 import { PrecisionSlidePanel } from './PrecisionSlidePanel'
 import { SlideWell } from './SlideWell'
 import { Stage } from './Stage'
+import { useAddSlide } from './useAddSlide'
 import type { DeckRoot, SlideDetail } from './deckDetail'
 
 export interface PrecisionWorkspaceProps {
   slides: SlideDetail[]
-  activeSlide: SlideDetail
+  activeSlide: SlideDetail | null
   deck: DeckRoot | null
-  onActivateSlide: (id: string) => void
 }
 
 export function PrecisionWorkspace({
   slides,
   activeSlide,
   deck,
-  onActivateSlide,
 }: PrecisionWorkspaceProps) {
   const editor = useEditor()
+  const addSlideAt = useAddSlide(slides)
   const [inspectorHost, setInspectorHost] = useState<HTMLElement | null>(null)
   const inspectorHostRef = useCallback(
     (node: HTMLElement | null) => setInspectorHost(node),
@@ -32,15 +32,29 @@ export function PrecisionWorkspace({
   return (
     <div className="precision-workspace">
       <aside className="precision-workspace__well" aria-label="Slides">
-        <SlideWell
-          slides={slides}
-          deck={deck}
-          onActivateSlide={onActivateSlide}
-        />
+        <SlideWell slides={slides} deck={deck} />
       </aside>
 
       <div className="precision-workspace__stage">
-        <Stage slide={activeSlide} deck={deck} inspectorHost={inspectorHost} />
+        {activeSlide ? (
+          <Stage
+            slide={activeSlide}
+            deck={deck}
+            inspectorHost={inspectorHost}
+          />
+        ) : (
+          <div className="stage">
+            <div className="precision-workspace__empty">
+              {editor.canEdit ? (
+                <button className="btn" onClick={() => addSlideAt(0)}>
+                  <Plus size={15} /> Add the first slide
+                </button>
+              ) : (
+                'No slides yet.'
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <aside
@@ -48,10 +62,10 @@ export function PrecisionWorkspace({
         className="precision-workspace__inspector"
         aria-label="Properties"
       >
-        <PrecisionSlidePanel slide={activeSlide} deck={deck} />
+        {activeSlide && <PrecisionSlidePanel slide={activeSlide} deck={deck} />}
       </aside>
 
-      {editor.selected.size === 0 && (
+      {activeSlide && editor.selected.size === 0 && (
         <p className="precision-workspace__hint">
           Select an object to refine it · drag to move · Shift locks axis
         </p>

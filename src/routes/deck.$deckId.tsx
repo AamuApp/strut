@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useQuery, useQueryStatus, useRoot } from '@rindle/react'
-import { ChevronDown, ChevronUp, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import {
   deckDetailQuery,
   deckSharesQuery,
@@ -13,7 +13,6 @@ import { EditorStateProvider, useEditor } from '../editor/EditorState'
 import { parseEditorSearch } from '../editor/editorSearch'
 import { UndoProvider } from '../editor/UndoProvider'
 import { Header } from '../editor/Header'
-import { DocView } from '../editor/DocView'
 import { PrecisionWorkspace } from '../editor/PrecisionWorkspace'
 import { ArrangeView } from '../editor/Overview'
 import { ChatPanel } from '../editor/ChatPanel'
@@ -33,10 +32,7 @@ export const Route = createFileRoute('/deck/$deckId')({
 
 const EMPTY_SLIDES: SlideDetail[] = []
 
-type ActiveTool =
-  | { kind: 'objects'; slideId: string }
-  | { kind: 'arrange' }
-  | null
+type ActiveTool = { kind: 'arrange' } | null
 
 function EditorPage() {
   const { deckId } = Route.useParams()
@@ -116,24 +112,21 @@ function EditorInner({ deckId }: { deckId: string }) {
     // before the URL navigation resolves, calling setActiveSlide in a loop.
   }, [slides, editor.activeSlideId, editor.setActiveSlide])
 
-  const activeSlide = slides.find((s) => s.id === editor.activeSlideId) ?? null
+  const activeSlide =
+    slides.find((s) => s.id === editor.activeSlideId) ??
+    (slides.length > 0 ? slides[0] : null)
 
-  // Contextual tools are editor-local overlays. The card column stays mounted behind them, preserving
-  // scroll/caret state without introducing route or URL state.
+  // Arrange is an editor-local overlay. Precision is the primary editor; only the active slide remains
+  // durable in the URL, while the temporary arrange/chat surfaces stay ephemeral React state.
   const [activeTool, setActiveTool] = useState<ActiveTool>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [styleIntent, setStyleIntent] = useState(0)
-  const [controlsOpen, setControlsOpen] = useState(false)
   const topDockRef = useRef<HTMLDivElement>(null)
-  const objectSlide =
-    activeTool?.kind === 'objects'
-      ? (slides.find((s) => s.id === activeTool.slideId) ?? null)
-      : null
   const arrangeOpen = activeTool?.kind === 'arrange'
 
   // The dock animates with `top`, not a CSS transform: transformed ancestors capture fixed-position
   // descendants, which would turn Header's viewport dialogs and mobile sheets into header-sized panels.
-  // Measure the real responsive bar so its collapsed offset and the object canvas's clearance stay exact.
+  // Measure the real responsive bar so the precision canvas's clearance stays exact.
   useLayoutEffect(() => {
     const dock = topDockRef.current
     const header = dock?.querySelector<HTMLElement>('.hdr')
@@ -156,21 +149,12 @@ function EditorInner({ deckId }: { deckId: string }) {
     }
   }, [])
 
-  // Shape placement belongs to the focused object canvas. Leaving that context by Back, Esc, Chat,
-  // Arrange, or slide deletion must never leave an invisible tool armed for the next visit.
+  // Shape placement belongs to the precision canvas. Covering it with Chat or Arrange must never leave
+  // an invisible tool armed for the next visit.
   useEffect(() => {
-    if (activeTool?.kind !== 'objects' && editor.pendingShape)
+    if ((arrangeOpen || chatOpen) && editor.pendingShape)
       editor.setPendingShape(null)
-  }, [activeTool?.kind, editor.pendingShape, editor.setPendingShape])
-
-  useEffect(() => {
-    if (
-      activeTool?.kind === 'objects' &&
-      slides.length > 0 &&
-      !slides.some((slide) => slide.id === activeTool.slideId)
-    )
-      setActiveTool(null)
-  }, [activeTool, slides])
+  }, [arrangeOpen, chatOpen, editor.pendingShape, editor.setPendingShape])
 
   useEffect(() => {
     if (!activeTool && !chatOpen) return
@@ -186,7 +170,7 @@ function EditorInner({ deckId }: { deckId: string }) {
       )
         return
       event.preventDefault()
-      if (activeTool) setActiveTool(null)
+      if (arrangeOpen) setActiveTool(null)
       else {
         setChatOpen(false)
         setStyleIntent(0)
@@ -194,7 +178,7 @@ function EditorInner({ deckId }: { deckId: string }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [activeTool, chatOpen, editor.pendingShape])
+  }, [arrangeOpen, chatOpen, editor.pendingShape])
 
   const closeChat = () => {
     setChatOpen(false)
@@ -202,76 +186,38 @@ function EditorInner({ deckId }: { deckId: string }) {
   }
 
   const toggleChat = () => {
-    setControlsOpen(false)
     setActiveTool(null)
     setStyleIntent(0)
     setChatOpen((open) => !open)
   }
 
   const openStyle = () => {
-    setControlsOpen(false)
     setActiveTool(null)
     setChatOpen(true)
     setStyleIntent((intent) => intent + 1)
   }
 
   const toggleArrange = () => {
-    setControlsOpen(false)
     closeChat()
     setActiveTool((tool) =>
       tool?.kind === 'arrange' ? null : { kind: 'arrange' },
     )
   }
 
-  const editObjects = (slideId: string) => {
-    setControlsOpen(false)
-    closeChat()
-    editor.setActiveSlide(slideId)
-    setActiveTool({ kind: 'objects', slideId })
-  }
-
   return (
     <div className="editor">
-      <div
-        ref={topDockRef}
-        className={
-          'editor__topdock' +
-          (controlsOpen ? ' is-open' : '') +
-          (objectSlide ? ' is-pinned' : '')
-        }
-      >
+      <div ref={topDockRef} className="editor__topdock is-pinned">
         <Header
           deck={deck}
-          activeSlide={objectSlide ?? activeSlide}
+          activeSlide={activeSlide}
           variants={variants}
           makesPublic={entitlement?.canKeepPrivate === false}
-          editingObjects={objectSlide != null}
-          onCloseObjects={() => setActiveTool(null)}
           arrangeOpen={arrangeOpen}
           onToggleArrange={toggleArrange}
           chatOpen={chatOpen}
           onToggleChat={toggleChat}
           onOpenStyle={openStyle}
         />
-        {!objectSlide && (
-          <button
-            type="button"
-            className="editor__dock-toggle"
-            title={
-              controlsOpen ? 'Hide editor controls' : 'Show editor controls'
-            }
-            aria-label={
-              controlsOpen ? 'Hide editor controls' : 'Show editor controls'
-            }
-            aria-expanded={controlsOpen}
-            onClick={(event) => {
-              if (controlsOpen) event.currentTarget.blur()
-              setControlsOpen(!controlsOpen)
-            }}
-          >
-            {controlsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        )}
       </div>
       {accessResolved && !editor.canEdit && (
         <div className="ro-banner">
@@ -279,24 +225,13 @@ function EditorInner({ deckId }: { deckId: string }) {
         </div>
       )}
       <div className="editor__body">
-        <DocView
-          slides={slides}
-          deck={deck}
-          onEditObjects={editObjects}
-          editingSuspended={objectSlide != null}
-        />
-        {objectSlide && (
-          <div className="context-tool context-tool--objects">
-            <PrecisionWorkspace
-              slides={slides}
-              activeSlide={objectSlide}
-              deck={deck}
-              onActivateSlide={(slideId) =>
-                setActiveTool({ kind: 'objects', slideId })
-              }
-            />
-          </div>
-        )}
+        <div className="editor__precision">
+          <PrecisionWorkspace
+            slides={slides}
+            activeSlide={activeSlide}
+            deck={deck}
+          />
+        </div>
         {arrangeOpen && (
           <div className="context-tool context-tool--arrange">
             <ArrangeView slides={slides} deck={deck} />
