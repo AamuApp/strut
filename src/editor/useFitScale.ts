@@ -1,6 +1,6 @@
 // Fit-to-container scale: observe a container and return the largest scale (capped at 0.1 min) that
-// fits a `w`×`h` slide inside it, minus `pad`. Extracted from Stage so other slide surfaces can reuse it
-// without a circular import.
+// fits a `w`×`h` slide inside it, minus `pad`. Zero means "not measured yet", keeping SSR from painting
+// a misleading placeholder-sized slide before hydration can read the viewport.
 
 import { useLayoutEffect, useState } from 'react'
 
@@ -10,19 +10,22 @@ export function useFitScale(
   h: number,
   pad = 56,
 ): number {
-  const [scale, setScale] = useState(0.5)
+  const [scale, setScale] = useState(0)
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     const measure = () => {
       const r = el.getBoundingClientRect()
+      if (r.width <= pad || r.height <= pad) {
+        setScale(0)
+        return
+      }
       setScale(
         Math.max(0.1, Math.min((r.width - pad) / w, (r.height - pad) / h)),
       )
     }
-    // Measure synchronously before the browser paints so a freshly-mounted surface never shows a
-    // frame at the placeholder 0.5 scale. Without this, a freshly mounted canvas would pop from 0.5 to
-    // the fitted scale on the next frame. The observer handles later container resizes.
+    // Measure synchronously during hydration before React's first client paint. The server markup uses
+    // scale 0 because there is no viewport to measure; the observer handles later container resizes.
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)

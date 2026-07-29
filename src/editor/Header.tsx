@@ -1,7 +1,5 @@
-// The editor's contextual command bar. It lives in the top-edge dock, so the deck stays chrome-free
-// until the user reaches for navigation, undo, design, sharing, AI, arranging, or Present. When the
-// focused object editor is open, its insertion tools join the same bar instead of creating a mode-
-// specific toolbar.
+// The precision editor's command bar. It lives in the pinned top dock and keeps navigation, insertion,
+// undo, design, sharing, AI, arranging, and Present in one place.
 
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
@@ -9,7 +7,6 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
-  ArrowLeft,
   ChevronDown,
   Circle,
   Code2,
@@ -131,8 +128,6 @@ export function Header({
   activeSlide,
   variants,
   makesPublic,
-  editingObjects,
-  onCloseObjects,
   arrangeOpen,
   onToggleArrange,
   chatOpen,
@@ -143,8 +138,6 @@ export function Header({
   activeSlide: SlideDetail | null
   variants: readonly DeckVariantRow[]
   makesPublic: boolean
-  editingObjects: boolean
-  onCloseObjects: () => void
   arrangeOpen: boolean
   onToggleArrange: () => void
   // "✨ Chat" advisor rail toggle. Visible to everyone (the panel itself gates guests with a sign-in
@@ -173,9 +166,7 @@ export function Header({
   const [shareOpen, setShareOpen] = useState(false)
   const [variantOpen, setVariantOpen] = useState(false)
   const active = editor.activeSlideId
-  // Object tools only appear after the user opens a card's focused object editor. Body writing stays
-  // directly on the card, so there is no persistent Objects|Body mode to understand or round-trip.
-  const canInsert = active != null && editingObjects && editor.canEdit
+  const canInsert = active != null && editor.canEdit
 
   // The Theme popover dismisses on a pointer-down outside its wrapper. Portaled color sub-popovers
   // stop pointer-down propagation themselves so swatch clicks do not close the whole menu.
@@ -440,17 +431,6 @@ export function Header({
 
   return (
     <div className="hdr">
-      {editingObjects && (
-        <button
-          type="button"
-          className="btn hdr__object-back"
-          title="Back to deck"
-          aria-label="Back to deck"
-          onClick={onCloseObjects}
-        >
-          <ArrowLeft size={17} />
-        </button>
-      )}
       {deck?.pid ? (
         <Link
           to="/project/$pid"

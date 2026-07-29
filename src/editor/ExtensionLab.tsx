@@ -46,7 +46,10 @@ export default function ExtensionLab() {
 
   async function run() {
     if (!slideId) {
-      setStatus({ kind: 'error', note: 'No active slide — open a slide first.' })
+      setStatus({
+        kind: 'error',
+        note: 'No active slide — open a slide first.',
+      })
       return
     }
     try {
@@ -146,9 +149,8 @@ export default function ExtensionLab() {
       )}
 
       <p style={hint}>
-        Added text is a positioned object. It renders over the slide body; use
-        the card's <strong>Edit positioned objects</strong> affordance to
-        select, move, or double-click-edit it.
+        Added text is a positioned object. It renders over the slide body;
+        select it on the canvas to move it, or double-click it to edit.
       </p>
     </div>
   )

@@ -4,9 +4,10 @@
 
 import { useEffect, useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { fragmentKey, useFragment } from '@rindle/react'
+import { fragmentKey, useFragment, useQueryStatus } from '@rindle/react'
 import type { FragmentRef } from '@rindle/react'
 import { ComponentFragment } from '../../shared/fragments'
+import { useStableQueryValue } from '../rindle/useStableQueryValue'
 import { componentFromRow } from './types'
 import type { AnyComponent, ComponentRow } from './types'
 
@@ -37,7 +38,9 @@ export function ComponentDataReader({
   onRemove?: (id: string) => void
   children: (component: AnyComponent) => ReactNode
 }) {
-  const data = useFragment(ComponentFragment, component.ref)
+  const liveData = useFragment(ComponentFragment, component.ref)
+  const coverageStatus = useQueryStatus(component.ref.coverage.query)
+  const data = useStableQueryValue(liveData, coverageStatus)
   if (!data) return null
   return (
     <ComponentData data={data} onData={onData} onRemove={onRemove}>
