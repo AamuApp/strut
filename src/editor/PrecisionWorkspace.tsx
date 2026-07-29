@@ -14,12 +14,14 @@ export interface PrecisionWorkspaceProps {
   slides: SlideDetail[]
   activeSlide: SlideDetail | null
   deck: DeckRoot | null
+  loading?: boolean
 }
 
 export function PrecisionWorkspace({
   slides,
   activeSlide,
   deck,
+  loading = false,
 }: PrecisionWorkspaceProps) {
   const editor = useEditor()
   const addSlideAt = useAddSlide(slides)
@@ -45,7 +47,9 @@ export function PrecisionWorkspace({
         ) : (
           <div className="stage">
             <div className="precision-workspace__empty">
-              {editor.canEdit ? (
+              {loading ? (
+                'Loading deck…'
+              ) : editor.canEdit ? (
                 <button className="btn" onClick={() => addSlideAt(0)}>
                   <Plus size={15} /> Add the first slide
                 </button>

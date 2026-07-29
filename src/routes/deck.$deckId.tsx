@@ -9,6 +9,7 @@ import {
 } from '../../shared/queries'
 import { authClient } from '../rindle/authClient'
 import { preloadDeck } from '../rindle/appSsr'
+import { useStableQueryValue } from '../rindle/useStableQueryValue'
 import { EditorStateProvider, useEditor } from '../editor/EditorState'
 import { parseEditorSearch } from '../editor/editorSearch'
 import { UndoProvider } from '../editor/UndoProvider'
@@ -41,9 +42,13 @@ function EditorPage() {
 
 function EditorAccess({ deckId }: { deckId: string }) {
   // The relay root: one sync query for the deck subtree; component children are local fragment refs.
-  const [deckRaw] = useRoot(deckDetailQuery, { deckId })
-  const deck = deckRaw as DeckRoot | null
-  const shares = useQuery(deckSharesQuery({ deckId }))
+  const [deckRaw, { status: deckStatus }] = useRoot(deckDetailQuery, {
+    deckId,
+  })
+  const deck = useStableQueryValue(deckRaw as DeckRoot | null, deckStatus)
+  const sharesRaw = useQuery(deckSharesQuery({ deckId }))
+  const sharesStatus = useQueryStatus(deckSharesQuery({ deckId }))
+  const shares = useStableQueryValue(sharesRaw, sharesStatus)
   // Owner or 'editor' collaborator → editable; everyone else (incl. a 'viewer') → read-only. While
   // the deck row is still syncing we assume read-only so editing chrome doesn't flash for viewers.
   // `me` is the session principal (matches the server-side owner_id). It comes from the LOADER (resolved
@@ -75,7 +80,7 @@ function EditorInner({ deckId }: { deckId: string }) {
   const [deckRaw, { status: deckStatus }] = useRoot(deckDetailQuery, {
     deckId,
   }) // deduped with EditorAccess's identical query
-  const deck = deckRaw as DeckRoot | null
+  const deck = useStableQueryValue(deckRaw as DeckRoot | null, deckStatus)
   const slides = deck?.slides ?? EMPTY_SLIDES
   const editor = useEditor()
   // Don't judge access until both the deck row and its shares are authoritative — otherwise canEdit is
@@ -230,6 +235,7 @@ function EditorInner({ deckId }: { deckId: string }) {
             slides={slides}
             activeSlide={activeSlide}
             deck={deck}
+            loading={deckStatus === 'unknown' && deck == null}
           />
         </div>
         {arrangeOpen && (

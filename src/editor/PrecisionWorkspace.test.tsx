@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PrecisionWorkspace } from './PrecisionWorkspace'
 import type { SlideDetail } from './deckDetail'
 
@@ -40,6 +40,8 @@ vi.mock('./PrecisionSlidePanel', () => ({
 const slide = { id: 'slide-1' } as SlideDetail
 
 describe('PrecisionWorkspace', () => {
+  afterEach(cleanup)
+
   beforeEach(() => {
     mocks.editor.canEdit = true
     mocks.editor.selected = new Set()
@@ -55,6 +57,18 @@ describe('PrecisionWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add the first slide' }))
     expect(mocks.addSlideAt).toHaveBeenCalledWith(0)
+  })
+
+  it('shows a loading state instead of claiming a still-hydrating deck is empty', () => {
+    render(
+      <PrecisionWorkspace slides={[]} activeSlide={null} deck={null} loading />,
+    )
+
+    expect(screen.getByText('Loading deck…')).toBeTruthy()
+    expect(screen.queryByText('No slides yet.')).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Add the first slide' }),
+    ).toBeNull()
   })
 
   it('renders the active slide directly in the precision stage and panel', () => {
