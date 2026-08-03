@@ -493,7 +493,13 @@ function aamuGatewayUrl(): string {
 
 async function aamuFetch(
   choice: { cid: string; userId: string; purpose: 'general' | 'style' },
-  input: { messages: ModelMessage[]; response_format?: unknown; max_tokens?: number; stream?: boolean },
+  input: {
+    messages: ModelMessage[]
+    response_format?: unknown
+    max_tokens?: number
+    stream?: boolean
+    images?: ModelImage[]
+  },
 ): Promise<Response> {
   if (!process.env.AAMU_INTERNAL_URL || !process.env.AAMU_SLIDES_SHARED_SECRET) {
     throw new ModelUnavailableError('Aamu AI gateway is not configured.')
@@ -512,6 +518,10 @@ async function aamuFetch(
         messages: input.messages,
         response_format: input.response_format,
         max_tokens: input.max_tokens,
+        images: input.images?.map((image) => ({
+          media_type: image.mediaType,
+          data: base64(image.bytes),
+        })),
         stream: input.stream === true,
       }),
     })
@@ -555,11 +565,6 @@ async function streamAamuModel(
   choice: { kind: 'aamu'; cid: string; userId: string; purpose: 'general' | 'style' },
   input: { messages: ModelMessage[]; images?: ModelImage[]; max_tokens?: number },
 ): Promise<ReadableStream<Uint8Array>> {
-  if (input.images?.length) {
-    throw new ModelUnavailableError(
-      'Aamu team AI gateway does not yet support visual chat references.',
-    )
-  }
   const res = await aamuFetch(choice, { ...input, stream: true })
   if (!res.body) throw new ModelUnavailableError('Aamu AI gateway returned no stream body.')
   return res.body
