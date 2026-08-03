@@ -46,9 +46,9 @@ export const Route = createFileRoute('/api/narrate')({
         }
 
         // Pick the backend from the user's connected model: BYO OpenRouter (they pay) or app default.
-        const { resolveModel } = await import('../../server/llm')
-        const choice = await resolveModel(account.id)
-        const byo = choice.kind === 'openrouter'
+        const { resolveModel, isExternalPaidModel } = await import('../../server/llm')
+        const choice = await resolveModel(account.id, { principal: account })
+        const byo = isExternalPaidModel(choice)
 
         // App-paid inference stays member-only (a guest can't spend the app's budget); BYO is open to any
         // session because the USER pays.

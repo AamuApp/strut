@@ -141,7 +141,7 @@ export function DashboardView({
         <span className="brandbar__tag">
           {isAamu ? 'Presentations in Aamu' : 'Spatial presentations'}
         </span>
-        <ModelControl />
+        {!isAamu && <ModelControl />}
         <UsageMeter />
         <AccountControl initial={account} entitlement={entitlement} />
         <ThemeToggle />

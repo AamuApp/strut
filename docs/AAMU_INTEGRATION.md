@@ -23,6 +23,10 @@ AAMU_SLIDES_WEBHOOK_SECRET=...
 BETTER_AUTH_SECRET=...
 SLIDES_RINDLE_WS_URL=wss://example.aamu.app/slides/rindle
 RINDLE_DAEMON_TOKEN=...
+
+# Strut calls Aamu's server-to-server `/api/integrations/slides/ai` gateway for
+# team-owned AI inference. The team provider/model/credential comes from Aamu's
+# `/team/ai` settings; the provider bills the team directly.
 ```
 
 The Aamu server pulls an authoritative snapshot once a minute by default

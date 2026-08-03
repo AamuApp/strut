@@ -58,6 +58,9 @@ export async function resolveSessionUser(request: Request): Promise<string> {
  *  the server-fn loader boundary as-is (no JSON-string dance like the rindle rows need). */
 export interface SessionAccount {
   id: string
+  source: SessionPrincipal['source']
+  cid: string
+  pids: string[]
   /** Guest sessions (better-auth's anonymous plugin) show "Sign in"; members show their identity. */
   isAnonymous: boolean
   name: string
@@ -75,6 +78,9 @@ export async function resolveSessionAccount(
   if (!principal) return null
   return {
     id: principal.id,
+    source: principal.source,
+    cid: principal.cid,
+    pids: principal.pids,
     isAnonymous:
       principal.source === 'better-auth' ? principal.isAnonymous : false,
     name: principal.name,

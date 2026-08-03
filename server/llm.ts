@@ -37,10 +37,16 @@ const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION = '2023-06-01'
 
 export type ModelChoice =
+  | { kind: 'aamu'; cid: string; userId: string; purpose: 'general' | 'style' }
   | { kind: 'workers-ai'; model: string }
   | { kind: 'openrouter'; model: string; apiKey: string }
   | { kind: 'anthropic'; model: string; apiKey: string }
   | { kind: 'openai'; model: string; apiKey: string }
+
+/** True when inference is charged to a user/team provider rather than Strut's own budget. */
+export function isExternalPaidModel(choice: ModelChoice): boolean {
+  return choice.kind === 'openrouter' || choice.kind === 'aamu'
+}
 
 export interface ModelMessage {
   role: 'system' | 'user' | 'assistant'
@@ -74,8 +80,26 @@ export class ModelUnavailableError extends Error {
  *  otherwise Workers AI. A credential read/decrypt failure falls through to the same app-paid default. */
 export async function resolveModel(
   userId: string,
-  options: { purpose?: 'general' | 'style' } = {},
+  options: {
+    purpose?: 'general' | 'style'
+    principal?: { source?: string; cid?: string }
+  } = {},
 ): Promise<ModelChoice> {
+  // Aamu owns the team provider selection and credential. Do not fall back to a Strut/app key for an
+  // Aamu session: the team setting is the source of truth and the team should be charged directly.
+  if (
+    options.principal?.source === 'aamu' &&
+    options.principal.cid &&
+    process.env.AAMU_INTERNAL_URL &&
+    process.env.AAMU_SLIDES_SHARED_SECRET
+  ) {
+    return {
+      kind: 'aamu',
+      cid: options.principal.cid,
+      userId,
+      purpose: options.purpose ?? 'general',
+    }
+  }
   try {
     const cred = await getCredential(userId)
     if (cred && cred.provider === 'openrouter' && cred.apiKey) {
@@ -198,6 +222,9 @@ export async function callModel(
   choice: ModelChoice,
   input: CallInput,
 ): Promise<unknown> {
+  if (choice.kind === 'aamu') {
+    return callAamuModel(choice, input)
+  }
   if (choice.kind === 'anthropic') {
     const { system, messages } = toAnthropicRequest(input)
     const body: Record<string, unknown> = {
@@ -310,6 +337,9 @@ export async function streamModel(
     max_tokens?: number
   },
 ): Promise<ReadableStream<Uint8Array>> {
+  if (choice.kind === 'aamu') {
+    return streamAamuModel(choice, input)
+  }
   if (choice.kind === 'anthropic') {
     // Plain prose only (no response_format) — same contract as the Workers AI streaming path; a streaming
     // feature that needs structure (the Edit lane) prompts for a fenced JSON block and parses it out.
@@ -452,6 +482,87 @@ function findLastUserMessage(messages: ModelMessage[]): number {
   for (let index = messages.length - 1; index >= 0; index--)
     if (messages[index].role === 'user') return index
   return -1
+}
+
+// ---- Aamu Slides gateway ------------------------------------------------------------------------
+
+function aamuGatewayUrl(): string {
+  const base = (process.env.AAMU_INTERNAL_URL || '').replace(/\/+$/, '')
+  return `${base}/api/integrations/slides/ai`
+}
+
+async function aamuFetch(
+  choice: { cid: string; userId: string; purpose: 'general' | 'style' },
+  input: { messages: ModelMessage[]; response_format?: unknown; max_tokens?: number; stream?: boolean },
+): Promise<Response> {
+  if (!process.env.AAMU_INTERNAL_URL || !process.env.AAMU_SLIDES_SHARED_SECRET) {
+    throw new ModelUnavailableError('Aamu AI gateway is not configured.')
+  }
+  try {
+    const res = await fetch(aamuGatewayUrl(), {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${process.env.AAMU_SLIDES_SHARED_SECRET}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        cid: choice.cid,
+        user_id: choice.userId,
+        purpose: choice.purpose,
+        messages: input.messages,
+        response_format: input.response_format,
+        max_tokens: input.max_tokens,
+        stream: input.stream === true,
+      }),
+    })
+    if (!res.ok) {
+      let detail = ''
+      try {
+        const body = (await res.clone().json()) as { error?: unknown }
+        detail = typeof body.error === 'string' ? body.error : ''
+      } catch {
+        // Keep provider/configuration details out of the response body when Aamu returned non-JSON.
+      }
+      throw new ModelUnavailableError(
+        `Aamu AI gateway error ${res.status}${detail ? `: ${detail}` : ''}`,
+      )
+    }
+    return res
+  } catch (err) {
+    if (err instanceof ModelUnavailableError) throw err
+    throw new ModelUnavailableError(
+      'Could not reach Aamu AI gateway: ' +
+        (err instanceof Error ? err.message : String(err)),
+    )
+  }
+}
+
+async function callAamuModel(
+  choice: { kind: 'aamu'; cid: string; userId: string; purpose: 'general' | 'style' },
+  input: CallInput,
+): Promise<unknown> {
+  const res = await aamuFetch(choice, input)
+  let payload: unknown
+  try {
+    payload = await res.json()
+  } catch {
+    throw new ModelUnavailableError('Aamu AI gateway returned a non-JSON response.')
+  }
+  return extractJson((payload as { output_text?: unknown } | null)?.output_text)
+}
+
+async function streamAamuModel(
+  choice: { kind: 'aamu'; cid: string; userId: string; purpose: 'general' | 'style' },
+  input: { messages: ModelMessage[]; images?: ModelImage[]; max_tokens?: number },
+): Promise<ReadableStream<Uint8Array>> {
+  if (input.images?.length) {
+    throw new ModelUnavailableError(
+      'Aamu team AI gateway does not yet support visual chat references.',
+    )
+  }
+  const res = await aamuFetch(choice, { ...input, stream: true })
+  if (!res.body) throw new ModelUnavailableError('Aamu AI gateway returned no stream body.')
+  return res.body
 }
 
 function base64(bytes: Uint8Array): string {

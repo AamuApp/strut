@@ -60,11 +60,12 @@ export const Route = createFileRoute('/api/chat/act')({
 
         // A photo-driven style turn gets the scoped GPT-5.4-mini default. Text-only chat retains the
         // existing provider choice, and a connected OpenRouter model still overrides either path.
-        const { resolveModel } = await import('../../server/llm')
+        const { resolveModel, isExternalPaidModel } = await import('../../server/llm')
         const choice = await resolveModel(account.id, {
+          principal: account,
           purpose: styleRequest ? 'style' : 'general',
         })
-        const byo = choice.kind === 'openrouter'
+        const byo = isExternalPaidModel(choice)
 
         // App-paid inference stays member-only; BYO is open to any session because the USER pays.
         if (!byo && account.isAnonymous) {

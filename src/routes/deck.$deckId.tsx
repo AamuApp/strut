@@ -88,7 +88,7 @@ function EditorInner({ deckId }: { deckId: string }) {
   const sharesStatus = useQueryStatus(deckSharesQuery({ deckId }))
   const accessResolved = deckStatus !== 'unknown' && sharesStatus !== 'unknown'
   const variants = useQuery(deckVariantsQuery({ deckId, limit: 5 }))
-  const { entitlement } = Route.useLoaderData()
+  const { entitlement, userId } = Route.useLoaderData()
   const deckContext = useDeckChatContext(deckId)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -255,6 +255,7 @@ function EditorInner({ deckId }: { deckId: string }) {
             activeSlide={activeSlide}
             deckContext={deckContext}
             canEdit={editor.canEdit}
+            aamuSession={userId.startsWith('aamu:')}
             styleIntent={styleIntent}
             onClose={closeChat}
           />

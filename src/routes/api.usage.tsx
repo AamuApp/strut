@@ -32,8 +32,10 @@ export const Route = createFileRoute('/api/usage')({
         // A connected BYO OpenRouter key lifts the app-paid cap for the features that HAVE a BYO path
         // (arrange/generate/chat run on the user's own credits). Image is Workers-AI-only, so it stays
         // capped even with a key — mirroring the `if (!byo)` gating in the AI routes.
-        const { resolveModel } = await import('../../server/llm')
-        const byo = (await resolveModel(account.id)).kind === 'openrouter'
+        const { resolveModel, isExternalPaidModel } = await import('../../server/llm')
+        const byo = isExternalPaidModel(
+          await resolveModel(account.id, { principal: account }),
+        )
         const BYO_UNLIMITED: Record<AiFeature, boolean> = {
           arrange: true,
           generate: true,

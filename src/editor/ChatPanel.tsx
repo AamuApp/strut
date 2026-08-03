@@ -29,6 +29,7 @@ export function ChatPanel({
   activeSlide,
   deckContext,
   canEdit = false,
+  aamuSession = false,
   styleIntent = 0,
   onClose,
 }: {
@@ -41,6 +42,8 @@ export function ChatPanel({
   deckContext: DeckChatContext
   /** Secure-by-default until the deck route wires the resolved owner/collaborator permission. */
   canEdit?: boolean
+  /** The deck was opened through Aamu's signed Slides session. */
+  aamuSession?: boolean
   /** Incremented when Design hands off to this ambient surface. */
   styleIntent?: number
   onClose: () => void
@@ -49,8 +52,9 @@ export function ChatPanel({
   // user as a non-member (nudge shown). The route enforces the same gate server-side.
   const { data: session } = authClient.useSession()
   const isMember =
-    !!session?.user &&
-    (session.user as { isAnonymous?: boolean }).isAnonymous !== true
+    aamuSession ||
+    (!!session?.user &&
+      (session.user as { isAnonymous?: boolean }).isAnonymous !== true)
 
   const { messages, send, busy, clear, undoTip, undoLast } = useChat(
     deckId,

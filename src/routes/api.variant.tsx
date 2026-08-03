@@ -34,9 +34,9 @@ export const Route = createFileRoute('/api/variant')({
         const account = await resolveSessionAccount(request)
         if (!account) return json({ error: 'sign_in_required' }, 401)
 
-        const { resolveModel } = await import('../../server/llm')
-        const choice = await resolveModel(account.id)
-        const byo = choice.kind === 'openrouter'
+        const { resolveModel, isExternalPaidModel } = await import('../../server/llm')
+        const choice = await resolveModel(account.id, { principal: account })
+        const byo = isExternalPaidModel(choice)
 
         if (!byo && account.isAnonymous) {
           return json({ error: 'sign_in_required' }, 401)
