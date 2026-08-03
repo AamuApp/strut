@@ -338,6 +338,7 @@ export interface ActionSendContext {
   history: ChatTurn[]
   theme?: ChatActTheme
   activeSlide?: ChatActSlide
+  pastedText?: string
 }
 
 export interface ActionSendOptions {
@@ -409,6 +410,7 @@ export async function sendChatAction(
       messages: [...ctx.history, { role: 'user', content: text }],
       theme: ctx.theme,
       activeSlide: ctx.activeSlide,
+      pastedText: ctx.pastedText,
     }
     const payload = references.length ? new FormData() : null
     if (payload) {
@@ -580,7 +582,11 @@ export interface UseChat {
   /** The thread for this deck, in `created` order. Reactive — every `writeLocal` re-renders. */
   messages: readonly ChatMessage[]
   /** Send one chat turn. The model may answer only, or apply normalized deck changes. */
-  send: (text: string, references?: readonly File[]) => void
+  send: (
+    text: string,
+    references?: readonly File[],
+    pastedText?: string,
+  ) => void
   /** True while an assistant turn is still streaming / an edit is being applied. */
   busy: boolean
   /** Clear the whole thread for this deck (removes every local row). */
@@ -798,7 +804,7 @@ export function useChat(
     sendStarting || messages.some((message) => message.status === 'streaming')
 
   const send = useCallback(
-    (text: string, references: readonly File[] = []) => {
+    (text: string, references: readonly File[] = [], pastedText = '') => {
       if (!store || busy || !canEdit || !text.trim()) return
       const finishTurn = beginChatTurn(sendInFlightRef)
       if (!finishTurn) return
@@ -859,6 +865,7 @@ export function useChat(
               history: convo,
               theme: grounding.theme,
               activeSlide: grounding.activeSlide,
+              pastedText,
             },
             text,
             async (actions) => {

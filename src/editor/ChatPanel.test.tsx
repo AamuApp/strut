@@ -2,7 +2,11 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ChatPanel } from './ChatPanel'
+import {
+  ChatPanel,
+  isPastedSourceAttachment,
+  PASTE_ATTACHMENT_THRESHOLD,
+} from './ChatPanel'
 import type { DeckChatContext } from './chatNarration'
 
 const mocks = vi.hoisted(() => ({
@@ -52,6 +56,18 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('ChatPanel permissions', () => {
+  it('treats short pasted text as an instruction', () => {
+    expect(isPastedSourceAttachment('Make a four-slide overview deck.')).toBe(
+      false,
+    )
+  })
+
+  it('treats long pasted text as source material', () => {
+    expect(isPastedSourceAttachment('x'.repeat(PASTE_ATTACHMENT_THRESHOLD + 1))).toBe(
+      true,
+    )
+  })
+
   it('readably disables chat for a read-only viewer', () => {
     render(
       <ChatPanel
@@ -97,6 +113,63 @@ describe('ChatPanel permissions', () => {
     expect(mocks.send).toHaveBeenCalledWith('Make it clearer')
   })
 
+  it('inserts a short paste into the chat input', () => {
+    render(
+      <ChatPanel
+        deckId="d1"
+        slides={[]}
+        deck={null}
+        activeSlide={null}
+        deckContext={deckContext}
+        canEdit
+        onClose={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByRole('textbox')
+    fireEvent.paste(input, {
+      clipboardData: {
+        getData: () => 'Make a four-slide overview deck.',
+        files: [],
+      },
+    })
+
+    expect((input as HTMLTextAreaElement).value).toBe(
+      'Make a four-slide overview deck.',
+    )
+    expect(screen.queryByText(/Pasted source material/)).toBeNull()
+  })
+
+  it('shows a long paste as source material and sends it separately', () => {
+    render(
+      <ChatPanel
+        deckId="d1"
+        slides={[]}
+        deck={null}
+        activeSlide={null}
+        deckContext={deckContext}
+        canEdit
+        onClose={vi.fn()}
+      />,
+    )
+
+    const source = 'x'.repeat(PASTE_ATTACHMENT_THRESHOLD + 1)
+    const input = screen.getByRole('textbox')
+    fireEvent.paste(input, {
+      clipboardData: {
+        getData: () => source,
+        files: [],
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(mocks.send).toHaveBeenCalledWith(
+      'Use the pasted source material to create or improve this deck.',
+      [],
+      source,
+    )
+  })
+
   it('sends selected photos as ephemeral style references', () => {
     const { container } = render(
       <ChatPanel
@@ -120,8 +193,9 @@ describe('ChatPanel permissions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     expect(mocks.send).toHaveBeenCalledWith(
-      'Restyle this deck using these images as visual references.',
+      'Use these images as visual references for this deck.',
       [file],
+      '',
     )
     expect(URL.revokeObjectURL).not.toHaveBeenCalled()
     expect(screen.getByRole('img', { name: 'look.png' })).toBeTruthy()
@@ -273,8 +347,9 @@ describe('ChatPanel permissions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     expect(mocks.send).toHaveBeenCalledWith(
-      'Restyle this deck using these images as visual references.',
+      'Use these images as visual references for this deck.',
       [expect.objectContaining({ name: 'look.JPG', type: 'image/jpeg' })],
+      '',
     )
   })
 })

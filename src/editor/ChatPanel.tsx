@@ -8,6 +8,7 @@
 // sign-in nudge (the server route enforces it too), mirroring AI Arrange / Generate.
 
 import { useEffect, useRef, useState } from 'react'
+import type { ClipboardEvent } from 'react'
 import { ImagePlus, RotateCcw, Sparkles, Trash2, X } from 'lucide-react'
 import { authClient } from '../rindle/authClient'
 import { markdownToHtml } from './markdown'
@@ -21,6 +22,14 @@ import {
   MAX_STYLE_REFERENCES_TOTAL_BYTES,
   STYLE_REFERENCE_MIMES,
 } from '../../shared/styleReferences'
+
+/** Short pastes are usually an instruction the author wants to keep editing;
+ * longer pastes are source material and should stay out of the visible prompt. */
+export const PASTE_ATTACHMENT_THRESHOLD = 1200
+
+export function isPastedSourceAttachment(value: string): boolean {
+  return value.trim().length > PASTE_ATTACHMENT_THRESHOLD
+}
 
 export function ChatPanel({
   deckId,
@@ -62,6 +71,7 @@ export function ChatPanel({
     { deck, activeSlide, deckContext, canEdit },
   )
   const [text, setText] = useState('')
+  const [pastedText, setPastedText] = useState('')
   const [references, setReferences] = useState<PendingReference[]>([])
   const [referenceError, setReferenceError] = useState<string | null>(null)
   const [draggingReferences, setDraggingReferences] = useState(false)
@@ -192,12 +202,14 @@ export function ChatPanel({
   function submit() {
     const t =
       text.trim() ||
-      (references.length
-        ? 'Restyle this deck using these images as visual references.'
+      (references.length || pastedText
+        ? pastedText && !references.length
+          ? 'Use the pasted source material to create or improve this deck.'
+          : 'Use these images as visual references for this deck.'
         : '')
     if (!t || busy || !canEdit) return
     const files = references.map((reference) => reference.file)
-    if (files.length) {
+    if (files.length || pastedText) {
       referenceTurn.current = {
         pending: true,
         previousAssistantId:
@@ -205,12 +217,37 @@ export function ChatPanel({
             .reverse()
             .find((message) => message.role === 'assistant')?.id ?? null,
       }
-      send(t, files)
+      send(t, files, pastedText)
     } else {
       send(t)
       setStyleReady(false)
     }
     setText('')
+    setPastedText('')
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const clipboardText = event.clipboardData.getData('text/plain').trim()
+    const files = Array.from(event.clipboardData.files)
+    if (!clipboardText && !files.length) return
+    event.preventDefault()
+    if (clipboardText) {
+      if (isPastedSourceAttachment(clipboardText)) {
+        setPastedText(clipboardText)
+      } else {
+        const input = event.currentTarget
+        const start = input.selectionStart
+        const end = input.selectionEnd
+        const nextText = text.slice(0, start) + clipboardText + text.slice(end)
+        setText(nextText)
+        setTimeout(() => {
+          input.focus()
+          const cursor = start + clipboardText.length
+          input.setSelectionRange(cursor, cursor)
+        }, 0)
+      }
+    }
+    if (files.length) addReferences(files)
   }
 
   return (
@@ -303,8 +340,22 @@ export function ChatPanel({
                 </div>
               </div>
             )}
-            {references.length > 0 && (
-              <div className="chat__references" aria-label="Style references">
+            {(references.length > 0 || pastedText) && (
+              <div className="chat__references" aria-label="Chat attachments">
+                {pastedText && (
+                  <div className="chat__text-attachment">
+                    <span>📋 Pasted text · {pastedText.length.toLocaleString()} characters</span>
+                    <button
+                      type="button"
+                      onClick={() => setPastedText('')}
+                      disabled={busy}
+                      title="Remove pasted text"
+                      aria-label="Remove pasted text"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
                 {references.map((reference) => (
                   <div className="chat__reference" key={reference.id}>
                     <img src={reference.previewUrl} alt={reference.file.name} />
@@ -324,6 +375,11 @@ export function ChatPanel({
             {referenceError && (
               <div className="chat__reference-error" role="alert">
                 {referenceError}
+              </div>
+            )}
+            {(URL_RE.test(text) || URL_RE.test(pastedText)) && (
+              <div className="chat__url-warning" role="status">
+                URL-osoitteiden sisältöä ei lueta. Liitä tarvittava teksti tai lisää kuva tähän viestiin.
               </div>
             )}
             <div className="chat__composer">
@@ -360,6 +416,7 @@ export function ChatPanel({
                 }
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
                   // Enter alone is a newline; ⌘/Ctrl+Enter sends (matches the Generate composer).
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -371,7 +428,7 @@ export function ChatPanel({
               <button
                 className="chat__send"
                 onClick={submit}
-                disabled={busy || (!text.trim() && references.length === 0)}
+                disabled={busy || (!text.trim() && !pastedText && references.length === 0)}
                 title="Send (⌘/Ctrl+Enter)"
               >
                 {busy ? (
@@ -398,6 +455,8 @@ interface PendingReference {
   file: File
   previewUrl: string
 }
+
+const URL_RE = /\bhttps?:\/\/[^\s<>"']+/i
 
 function isFileDrag(dataTransfer: DataTransfer): boolean {
   return (

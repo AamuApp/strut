@@ -112,6 +112,8 @@ export interface ChatActRequest {
   slideIds: string[]
   theme?: ChatActTheme
   activeSlide?: ChatActSlide
+  /** One ephemeral pasted-text source for this turn; never persisted in the chat thread. */
+  pastedText?: string
 }
 
 // Server-side ceilings on the model's OUTPUT (input caps are inherited from CHAT_LIMITS via
@@ -124,6 +126,7 @@ export const CHAT_ACTION_LIMITS = {
   maxCount: 40, // mirrors GENERATE_LIMITS.maxSlides
   maxActiveText: 8000, // the active slide's full body, for set_body grounding
   maxActiveNotes: 8000, // the active slide's research notes, for evidence-grounded rewrites
+  maxPastedText: 32_000,
   maxThemeField: 80,
   maxThemeCssContext: MAX_GENERATED_THEME_CSS,
   maxSlideIds: 150,
@@ -162,6 +165,9 @@ export function clampChatActRequest(req: ChatActRequest): ChatActRequest {
           .slice(0, CHAT_ACTION_LIMITS.maxSlideIds)
       : [],
   }
+  const pastedText = str(req.pastedText).trim()
+  if (pastedText)
+    out.pastedText = pastedText.slice(0, CHAT_ACTION_LIMITS.maxPastedText)
   const t = req.theme
   if (t && typeof t === 'object') {
     const cap = CHAT_ACTION_LIMITS.maxThemeField
