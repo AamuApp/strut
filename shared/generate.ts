@@ -65,6 +65,7 @@ export function generateJsonSchema() {
           '(never more than 40); if they did not say, choose a sensible number for the topic.',
         items: {
           type: 'object',
+          additionalProperties: false,
           properties: {
             markdown: {
               type: 'string',
@@ -78,6 +79,7 @@ export function generateJsonSchema() {
       },
     },
     required: ['slides'],
+    additionalProperties: false,
   }
 }
 
