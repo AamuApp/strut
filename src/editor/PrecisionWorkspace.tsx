@@ -1,7 +1,7 @@
 // The primary deck editor: a resident slide well, focused canvas, and selection inspector. Slide
 // location stays in the route's `?slide=` state while object selection remains ephemeral.
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useEditor } from './EditorState'
 import { PrecisionSlidePanel } from './PrecisionSlidePanel'
@@ -30,6 +30,47 @@ export function PrecisionWorkspace({
     (node: HTMLElement | null) => setInspectorHost(node),
     [],
   )
+
+  // Ctrl + arrow keys move the precision editor's viewport between slides. Capture the event before
+  // Stage's arrow-key handler so Ctrl + arrow never nudges a selected component.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.ctrlKey) return
+      if (
+        event.key !== 'ArrowLeft' &&
+        event.key !== 'ArrowRight' &&
+        event.key !== 'ArrowUp' &&
+        event.key !== 'ArrowDown'
+      )
+        return
+
+      const target = event.target as HTMLElement | null
+      if (
+        target?.isContentEditable ||
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT'
+      )
+        return
+
+      const currentIndex = slides.findIndex(
+        (slide) => slide.id === (editor.activeSlideId ?? activeSlide?.id),
+      )
+      if (currentIndex < 0) return
+
+      const direction =
+        event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1
+      const nextIndex = currentIndex + direction
+      if (nextIndex < 0 || nextIndex >= slides.length) return
+      const nextSlide = slides[nextIndex]
+
+      event.preventDefault()
+      editor.setActiveSlide(nextSlide.id)
+    }
+
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [activeSlide?.id, editor.activeSlideId, editor.setActiveSlide, slides])
 
   return (
     <div className="precision-workspace">

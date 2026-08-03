@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   editor: {
     canEdit: true,
     selected: new Set<string>(),
+    activeSlideId: 'slide-1',
+    setActiveSlide: vi.fn(),
   },
   addSlideAt: vi.fn(() => 'new-slide'),
 }))
@@ -45,6 +47,8 @@ describe('PrecisionWorkspace', () => {
   beforeEach(() => {
     mocks.editor.canEdit = true
     mocks.editor.selected = new Set()
+    mocks.editor.activeSlideId = 'slide-1'
+    mocks.editor.setActiveSlide.mockClear()
     mocks.addSlideAt.mockClear()
   })
 
@@ -78,5 +82,28 @@ describe('PrecisionWorkspace', () => {
 
     expect(screen.getByTestId('stage').textContent).toBe('slide-1')
     expect(screen.getByTestId('slide-panel').textContent).toBe('slide-1')
+  })
+
+  it('moves between slides with Ctrl plus arrow keys', () => {
+    const slides = [
+      { id: 'slide-1' },
+      { id: 'slide-2' },
+      { id: 'slide-3' },
+    ] as SlideDetail[]
+    mocks.editor.activeSlideId = 'slide-2'
+
+    render(
+      <PrecisionWorkspace
+        slides={slides}
+        activeSlide={slides[1]}
+        deck={null}
+      />,
+    )
+
+    fireEvent.keyDown(window, { key: 'ArrowRight', ctrlKey: true })
+    expect(mocks.editor.setActiveSlide).toHaveBeenLastCalledWith('slide-3')
+
+    fireEvent.keyDown(window, { key: 'ArrowUp', ctrlKey: true })
+    expect(mocks.editor.setActiveSlide).toHaveBeenLastCalledWith('slide-1')
   })
 })
