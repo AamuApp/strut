@@ -17,7 +17,6 @@ export async function claimDecks(from: string, to: string): Promise<void> {
   const daemon = new HttpRindleDaemonClient({
     baseUrl: DAEMON_URL,
     headers: {
-      authorization: `Bearer ${process.env.RINDLE_DAEMON_TOKEN ?? ''}`,
       'x-rindle-token': process.env.RINDLE_DAEMON_TOKEN ?? '',
     },
   })
