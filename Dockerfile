@@ -22,6 +22,7 @@ COPY --chown=slides:slides --from=build /app/migrations-d1 ./migrations-d1
 COPY --chown=slides:slides --from=build /app/scripts/start-rindle-docker.mjs ./scripts/start-rindle-docker.mjs
 COPY --chown=slides:slides --from=build /app/server/node-server.mjs ./server/node-server.mjs
 COPY --chown=slides:slides --from=build /app/package.json ./
+COPY --chown=slides:slides --from=build /app/rindle.ncl ./rindle.ncl
 COPY --chown=slides:slides daemon.docker.json ./daemon.json
 
 RUN mkdir -p /var/lib/slides /var/lib/slides-auth \

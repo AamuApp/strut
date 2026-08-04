@@ -1,19 +1,26 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { spawn } from 'node:child_process'
+import { createConnection, createServer } from 'node:net'
 
-const token = process.env.RINDLE_DAEMON_TOKEN
-if (!token) throw new Error('RINDLE_DAEMON_TOKEN is required')
+// Rindle 0.9 supervises the replicated fleet described by rindle.ncl. Keep its
+// rendered state and SQLite files in the mounted volume so restarts are durable.
+const runDir = '/var/lib/slides'
+const internalPort = 7600
+const proxyPort = 7602
 
-const config = JSON.parse(await readFile('/app/daemon.json', 'utf8'))
-config.authToken = token
-const runDir = await mkdtemp(join(tmpdir(), 'slides-rindle-'))
-await writeFile(join(runDir, 'daemon.json'), JSON.stringify(config))
+// rindle-dev-edge binds to loopback by design. Bridge its single HTTP/WebSocket
+// ingress to the container network without changing the generated topology.
+const proxy = createServer((socket) => {
+  const upstream = createConnection({ host: '127.0.0.1', port: internalPort })
+  socket.pipe(upstream)
+  upstream.pipe(socket)
+  socket.on('error', () => upstream.destroy())
+  upstream.on('error', () => socket.destroy())
+})
+proxy.listen(proxyPort, '0.0.0.0')
 
 const child = spawn(
   process.execPath,
-  ['/app/node_modules/@rindle/cli/dist/cli.js', 'up', '--migrate'],
+  ['/app/node_modules/@rindle/cli/dist/cli.js', 'up', '/app/rindle.ncl', '--migrate'],
   {
     cwd: runDir,
     env: {
@@ -25,10 +32,14 @@ const child = spawn(
 )
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => child.kill(signal))
+  process.on(signal, () => {
+    proxy.close()
+    child.kill(signal)
+  })
 }
 
 child.on('exit', (code, signal) => {
+  proxy.close()
   if (signal) process.kill(process.pid, signal)
   else process.exit(code ?? 1)
 })
