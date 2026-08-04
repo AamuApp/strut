@@ -16,7 +16,9 @@ world (the impress.js model, made visual and editable).
 
 ## Architecture
 
-- **`rindled` daemon** — owns the SQLite DB + the live-query WebSocket (`:7600` control, `:7601` ws).
+- **Rindle fleet** — a `rindle-replicator` write-master + one `rindled` follower (which owns the
+  live-query WebSocket), fronted by a `rindle-dev-edge` ingress that serves control, reads and ws on a
+  single port: `127.0.0.1:22050`. Shape comes from `rindle.ncl`; `rindle up`/`dev` render and supervise it.
 - **API** — TanStack Start server routes (`src/routes/api.rindle.*`) host the stateless Rindle API
   (`server/rindle-api.ts`): they validate args, run authoritative SQL mutators, and register the named
   queries. Same-origin, no separate process. Image uploads (`server/upload.ts`) go to Cloudflare R2 —
@@ -24,7 +26,7 @@ world (the impress.js model, made visual and editable).
   predicted client mutators in `shared/app-def.ts`.
 - **Browser client** (`src/rindle/*`) — the optimistic store (`@rindle/optimistic` + WASM), `useQuery`
   live reads, and `app.mutate.*` writes, posting to `/api/rindle/*`. The live-query WebSocket connects
-  directly to the daemon (`:7601`).
+  directly to the fleet ingress (`:22050`).
 
 Schema lives in `migrations/`; `shared/` holds the generated schema, query builder, named queries, and
 client mutators (imported by both browser and server). App code is in `src/` (`routes/`, `editor/`,
@@ -42,28 +44,32 @@ pnpm dev
 
 Then open http://localhost:3000.
 
-`pnpm dev` runs two processes with `concurrently`:
+`pnpm dev` is `rindle dev … -- pnpm dev:web`: the CLI owns the fleet for the lifetime of the web
+command, then hands it the connection bindings as env vars.
 
-- `rindle up --migrate --gen shared/schema.ts --watch` — starts the daemon from `daemon.json`, applies
-  migrations, regenerates `shared/schema.ts`, and keeps watching `migrations/`.
+- `rindle dev --migrate --gen shared/schema.ts --watch` — renders `rindle.ncl`, supervises the fleet,
+  applies migrations, regenerates `shared/schema.ts`, and keeps watching `migrations/`.
 - `vite dev --port 3000` — starts the TanStack Start app on http://localhost:3000. The Rindle API and
   image upload endpoints are served by this same web process under `/api/rindle/*`; there is no
   separate API server to start.
 
-Local state lives in `rindle.db` and `.uploads/`. Image uploads work with no config by using the local
+Local state lives in `master.db` (the replicator's write-master), `follower-0.db`, and `.uploads/`. Image uploads work with no config by using the local
 fallback; copy `.env.example` to `.env` only if you want uploads stored in Cloudflare R2. `vite.config.ts`
 loads `.env` for server-side values during `vite dev`.
 
 If you need to run the processes separately:
 
 ```bash
-pnpm daemon   # daemon + migration/schema watcher
-pnpm dev:web  # web app + same-origin API routes; expects the daemon to already be running
+pnpm daemon   # fleet + migration/schema watcher
+pnpm dev:web  # web app + same-origin API routes; expects the fleet to already be running
 ```
 
-By default the daemon control plane is `http://127.0.0.1:7600` and the live-query WebSocket is
-`ws://127.0.0.1:7601`. Override them with `RINDLE_DAEMON_URL` for the server/API side and
-`VITE_RINDLE_WS` for the browser side.
+Both legs default to the fleet ingress — `http://127.0.0.1:22050` for control/reads and
+`ws://127.0.0.1:22050` for the live-query WebSocket. `rindle dev`/`exec` inject the real bindings
+(`RINDLE_URL`, and under `exec` also `RINDLE_DAEMON_URL`/`RINDLE_FLEET_WS`), so the defaults only
+matter when you run `pnpm dev:web` on its own. Override with `RINDLE_DAEMON_URL` for the server/API
+side, `RINDLE_DAEMON_WS` for the WS URL the server hands the browser (`/api/rindle/config`), or
+`VITE_RINDLE_WS` as a build-time client fallback. See `server/rindleEnv.ts`.
 
 Other scripts:
 
@@ -85,6 +91,16 @@ separately. `pnpm deploy` builds the Worker (`CF=1 vite build`) and ships it wit
 `pnpm dev`/`pnpm build` stay on Node and are unaffected. See **[`docs/DEPLOY_CLOUDFLARE.md`](docs/DEPLOY_CLOUDFLARE.md)**
 for the full guide (daemon hosting, R2 setup, secrets, deploy steps).
 
+## AI: who pays
+
+The ✨ features (Chat and everything it can do — author slides, arrange, restyle, edit) run on a model
+**the user supplies**: connect an [OpenRouter](https://openrouter.ai/keys) key once and AI turns on
+across the editor, on their credits, with no account required.
+
+That is the only inference path. Without a connected key, every ✨ route answers `402` and the editor
+shows a connect-a-model gate. Strut has no deployment-funded provider keys, AI quota ledger, generated-
+image backend, or speech-to-text backend to monitor. Image uploads and openly licensed image search remain.
+
 ## Commercial / hosted (optional)
 
 Strut is fully open source and self-hostable for free. The **official hosted** Strut (marketing page +
@@ -93,8 +109,8 @@ deploy time — so a clone has **no billing, no marketing, and no paywall**, and
 today. This follows the same opt-in posture as the analytics above.
 
 The repo ships the open-core **seam** (`#commercial`) that an overlay plugs into: the app _reads_ an
-entitlement (`server/entitlements.ts`) to lift AI caps / the deck cap / publishing, and _renders_ an
-optional Upgrade affordance — all inert without an overlay. `pnpm deploy` builds the free app on a single
+entitlement (`server/entitlements.ts`) for hosted storage, private-deck, and white-label features, and
+_renders_ an optional Upgrade affordance — all inert without an overlay. `pnpm deploy` builds the free app on a single
 host; `pnpm deploy:pro` builds the app **plus** the overlay as one Worker (marketing on `strut.io`, the
 app on `strut.io/app`). See **[`docs/COMMERCIAL_OVERLAY.md`](docs/COMMERCIAL_OVERLAY.md)**.
 

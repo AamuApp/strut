@@ -15,11 +15,8 @@ import { Route as ShareDeckIdRouteImport } from './routes/share.$deckId'
 import { Route as ProjectPidRouteImport } from './routes/project.$pid'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
 import { Route as ApiVariantRouteImport } from './routes/api.variant'
-import { Route as ApiUsageRouteImport } from './routes/api.usage'
-import { Route as ApiTranscribeRouteImport } from './routes/api.transcribe'
 import { Route as ApiNarrateRouteImport } from './routes/api.narrate'
 import { Route as ApiImageSearchRouteImport } from './routes/api.image-search'
-import { Route as ApiImageRouteImport } from './routes/api.image'
 import { Route as ApiGenerateRouteImport } from './routes/api.generate'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiArtifactRouteImport } from './routes/api.artifact'
@@ -71,16 +68,6 @@ const ApiVariantRoute = ApiVariantRouteImport.update({
   path: '/api/variant',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUsageRoute = ApiUsageRouteImport.update({
-  id: '/api/usage',
-  path: '/api/usage',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
-  id: '/api/transcribe',
-  path: '/api/transcribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiNarrateRoute = ApiNarrateRouteImport.update({
   id: '/api/narrate',
   path: '/api/narrate',
@@ -89,11 +76,6 @@ const ApiNarrateRoute = ApiNarrateRouteImport.update({
 const ApiImageSearchRoute = ApiImageSearchRouteImport.update({
   id: '/api/image-search',
   path: '/api/image-search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiImageRoute = ApiImageRouteImport.update({
-  id: '/api/image',
-  path: '/api/image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
@@ -205,11 +187,8 @@ export interface FileRoutesByFullPath {
   '/api/artifact': typeof ApiArtifactRoute
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
-  '/api/image': typeof ApiImageRoute
   '/api/image-search': typeof ApiImageSearchRoute
   '/api/narrate': typeof ApiNarrateRoute
-  '/api/transcribe': typeof ApiTranscribeRoute
-  '/api/usage': typeof ApiUsageRoute
   '/api/variant': typeof ApiVariantRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/project/$pid': typeof ProjectPidRoute
@@ -238,11 +217,8 @@ export interface FileRoutesByTo {
   '/api/artifact': typeof ApiArtifactRoute
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
-  '/api/image': typeof ApiImageRoute
   '/api/image-search': typeof ApiImageSearchRoute
   '/api/narrate': typeof ApiNarrateRoute
-  '/api/transcribe': typeof ApiTranscribeRoute
-  '/api/usage': typeof ApiUsageRoute
   '/api/variant': typeof ApiVariantRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/project/$pid': typeof ProjectPidRoute
@@ -272,11 +248,8 @@ export interface FileRoutesById {
   '/api/artifact': typeof ApiArtifactRoute
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
-  '/api/image': typeof ApiImageRoute
   '/api/image-search': typeof ApiImageSearchRoute
   '/api/narrate': typeof ApiNarrateRoute
-  '/api/transcribe': typeof ApiTranscribeRoute
-  '/api/usage': typeof ApiUsageRoute
   '/api/variant': typeof ApiVariantRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/project/$pid': typeof ProjectPidRoute
@@ -307,11 +280,8 @@ export interface FileRouteTypes {
     | '/api/artifact'
     | '/api/chat'
     | '/api/generate'
-    | '/api/image'
     | '/api/image-search'
     | '/api/narrate'
-    | '/api/transcribe'
-    | '/api/usage'
     | '/api/variant'
     | '/deck/$deckId'
     | '/project/$pid'
@@ -340,11 +310,8 @@ export interface FileRouteTypes {
     | '/api/artifact'
     | '/api/chat'
     | '/api/generate'
-    | '/api/image'
     | '/api/image-search'
     | '/api/narrate'
-    | '/api/transcribe'
-    | '/api/usage'
     | '/api/variant'
     | '/deck/$deckId'
     | '/project/$pid'
@@ -373,11 +340,8 @@ export interface FileRouteTypes {
     | '/api/artifact'
     | '/api/chat'
     | '/api/generate'
-    | '/api/image'
     | '/api/image-search'
     | '/api/narrate'
-    | '/api/transcribe'
-    | '/api/usage'
     | '/api/variant'
     | '/deck/$deckId'
     | '/project/$pid'
@@ -407,11 +371,8 @@ export interface RootRouteChildren {
   ApiArtifactRoute: typeof ApiArtifactRoute
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiGenerateRoute: typeof ApiGenerateRoute
-  ApiImageRoute: typeof ApiImageRoute
   ApiImageSearchRoute: typeof ApiImageSearchRoute
   ApiNarrateRoute: typeof ApiNarrateRoute
-  ApiTranscribeRoute: typeof ApiTranscribeRoute
-  ApiUsageRoute: typeof ApiUsageRoute
   ApiVariantRoute: typeof ApiVariantRoute
   DeckDeckIdRoute: typeof DeckDeckIdRoute
   ProjectPidRoute: typeof ProjectPidRoute
@@ -476,20 +437,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVariantRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/usage': {
-      id: '/api/usage'
-      path: '/api/usage'
-      fullPath: '/api/usage'
-      preLoaderRoute: typeof ApiUsageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/transcribe': {
-      id: '/api/transcribe'
-      path: '/api/transcribe'
-      fullPath: '/api/transcribe'
-      preLoaderRoute: typeof ApiTranscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/narrate': {
       id: '/api/narrate'
       path: '/api/narrate'
@@ -502,13 +449,6 @@ declare module '@tanstack/react-router' {
       path: '/api/image-search'
       fullPath: '/api/image-search'
       preLoaderRoute: typeof ApiImageSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/image': {
-      id: '/api/image'
-      path: '/api/image'
-      fullPath: '/api/image'
-      preLoaderRoute: typeof ApiImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate': {
@@ -673,11 +613,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiArtifactRoute: ApiArtifactRoute,
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiGenerateRoute: ApiGenerateRoute,
-  ApiImageRoute: ApiImageRoute,
   ApiImageSearchRoute: ApiImageSearchRoute,
   ApiNarrateRoute: ApiNarrateRoute,
-  ApiTranscribeRoute: ApiTranscribeRoute,
-  ApiUsageRoute: ApiUsageRoute,
   ApiVariantRoute: ApiVariantRoute,
   DeckDeckIdRoute: DeckDeckIdRoute,
   ProjectPidRoute: ProjectPidRoute,

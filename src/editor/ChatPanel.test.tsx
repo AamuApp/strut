@@ -12,19 +12,19 @@ import type { DeckChatContext } from './chatNarration'
 const mocks = vi.hoisted(() => ({
   send: vi.fn(),
   useChat: vi.fn(),
+  useModelStatus: vi.fn(),
 }))
 
 vi.mock('./aiChat', () => ({
   useChat: mocks.useChat,
 }))
 
-vi.mock('../rindle/authClient', () => ({
-  authClient: {
-    useSession: () => ({
-      data: { user: { id: 'member', isAnonymous: false } },
-    }),
-    signIn: { social: vi.fn() },
-  },
+// The panel's access signal is the viewer's connected model.
+vi.mock('../rindle/modelClient', () => ({
+  useModelStatus: mocks.useModelStatus,
+  getModelStatus: vi.fn(),
+  connectModel: vi.fn(),
+  disconnectModel: vi.fn(),
 }))
 
 const deckContext: DeckChatContext = {
@@ -35,6 +35,15 @@ const deckContext: DeckChatContext = {
 beforeEach(() => {
   mocks.send.mockReset()
   mocks.useChat.mockReset()
+  mocks.useModelStatus.mockReset().mockReturnValue({
+    status: {
+      connected: true,
+      provider: 'openrouter',
+      model: null,
+    },
+    loading: false,
+    refresh: vi.fn(),
+  })
   mocks.useChat.mockReturnValue({
     messages: [],
     send: mocks.send,
@@ -91,6 +100,33 @@ describe('ChatPanel permissions', () => {
       [],
       expect.objectContaining({ canEdit: false }),
     )
+  })
+
+  it('offers the connect flow instead of the composer when there is no model to run on', () => {
+    mocks.useModelStatus.mockReturnValue({
+      status: {
+        connected: false,
+        provider: null,
+        model: null,
+      },
+      loading: false,
+      refresh: vi.fn(),
+    })
+
+    render(
+      <ChatPanel
+        deckId="d1"
+        slides={[]}
+        deck={null}
+        activeSlide={null}
+        deckContext={deckContext}
+        canEdit
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Connect a model' })).toBeTruthy()
   })
 
   it('lets an editable member compose and send', () => {
