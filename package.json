@@ -41,6 +41,7 @@
     "@aws-sdk/client-s3": "^3.1075.0",
     "@rindle/api-server": "^0.9.0",
     "@rindle/client": "^0.9.0",
+    "@rindle/cli": "^0.9.0",
     "@rindle/daemon-client": "^0.9.0",
     "@rindle/narrator": "^0.9.0",
     "@rindle/narrator-react": "^0.9.0",
@@ -77,7 +78,6 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.43.0",
-    "@rindle/cli": "^0.9.0",
     "@rindle/react-devtools": "^0.9.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",

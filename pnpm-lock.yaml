@@ -17,6 +17,9 @@ importers:
       '@rindle/api-server':
         specifier: ^0.9.0
         version: 0.9.0
+      '@rindle/cli':
+        specifier: ^0.9.0
+        version: 0.9.0
       '@rindle/client':
         specifier: ^0.9.0
         version: 0.9.0
@@ -123,9 +126,6 @@ importers:
       '@cloudflare/vite-plugin':
         specifier: ^1.43.0
         version: 1.43.0(vite@8.1.0(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))(workerd@1.20260701.1)(wrangler@4.107.0)
-      '@rindle/cli':
-        specifier: ^0.9.0
-        version: 0.9.0
       '@rindle/react-devtools':
         specifier: ^0.9.0
         version: 0.9.0(react@19.2.7)
