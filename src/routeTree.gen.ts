@@ -15,6 +15,7 @@ import { Route as ShareDeckIdRouteImport } from './routes/share.$deckId'
 import { Route as ProjectPidRouteImport } from './routes/project.$pid'
 import { Route as DeckDeckIdRouteImport } from './routes/deck.$deckId'
 import { Route as ApiVariantRouteImport } from './routes/api.variant'
+import { Route as ApiUsageRouteImport } from './routes/api.usage'
 import { Route as ApiNarrateRouteImport } from './routes/api.narrate'
 import { Route as ApiImageSearchRouteImport } from './routes/api.image-search'
 import { Route as ApiGenerateRouteImport } from './routes/api.generate'
@@ -66,6 +67,11 @@ const DeckDeckIdRoute = DeckDeckIdRouteImport.update({
 const ApiVariantRoute = ApiVariantRouteImport.update({
   id: '/api/variant',
   path: '/api/variant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUsageRoute = ApiUsageRouteImport.update({
+  id: '/api/usage',
+  path: '/api/usage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiNarrateRoute = ApiNarrateRouteImport.update({
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/api/generate': typeof ApiGenerateRoute
   '/api/image-search': typeof ApiImageSearchRoute
   '/api/narrate': typeof ApiNarrateRoute
+  '/api/usage': typeof ApiUsageRoute
   '/api/variant': typeof ApiVariantRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/project/$pid': typeof ProjectPidRoute
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/api/generate': typeof ApiGenerateRoute
   '/api/image-search': typeof ApiImageSearchRoute
   '/api/narrate': typeof ApiNarrateRoute
+  '/api/usage': typeof ApiUsageRoute
   '/api/variant': typeof ApiVariantRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/project/$pid': typeof ProjectPidRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/api/generate': typeof ApiGenerateRoute
   '/api/image-search': typeof ApiImageSearchRoute
   '/api/narrate': typeof ApiNarrateRoute
+  '/api/usage': typeof ApiUsageRoute
   '/api/variant': typeof ApiVariantRoute
   '/deck/$deckId': typeof DeckDeckIdRoute
   '/project/$pid': typeof ProjectPidRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/api/generate'
     | '/api/image-search'
     | '/api/narrate'
+    | '/api/usage'
     | '/api/variant'
     | '/deck/$deckId'
     | '/project/$pid'
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/api/generate'
     | '/api/image-search'
     | '/api/narrate'
+    | '/api/usage'
     | '/api/variant'
     | '/deck/$deckId'
     | '/project/$pid'
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/generate'
     | '/api/image-search'
     | '/api/narrate'
+    | '/api/usage'
     | '/api/variant'
     | '/deck/$deckId'
     | '/project/$pid'
@@ -373,6 +385,7 @@ export interface RootRouteChildren {
   ApiGenerateRoute: typeof ApiGenerateRoute
   ApiImageSearchRoute: typeof ApiImageSearchRoute
   ApiNarrateRoute: typeof ApiNarrateRoute
+  ApiUsageRoute: typeof ApiUsageRoute
   ApiVariantRoute: typeof ApiVariantRoute
   DeckDeckIdRoute: typeof DeckDeckIdRoute
   ProjectPidRoute: typeof ProjectPidRoute
@@ -435,6 +448,13 @@ declare module '@tanstack/react-router' {
       path: '/api/variant'
       fullPath: '/api/variant'
       preLoaderRoute: typeof ApiVariantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/usage': {
+      id: '/api/usage'
+      path: '/api/usage'
+      fullPath: '/api/usage'
+      preLoaderRoute: typeof ApiUsageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/narrate': {
@@ -615,6 +635,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGenerateRoute: ApiGenerateRoute,
   ApiImageSearchRoute: ApiImageSearchRoute,
   ApiNarrateRoute: ApiNarrateRoute,
+  ApiUsageRoute: ApiUsageRoute,
   ApiVariantRoute: ApiVariantRoute,
   DeckDeckIdRoute: DeckDeckIdRoute,
   ProjectPidRoute: ProjectPidRoute,
@@ -637,12 +658,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

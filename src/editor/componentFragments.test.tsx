@@ -37,7 +37,7 @@ const row: ComponentRow = {
   custom_classes: '',
   fill: '',
   content: 'seeded text',
-  props: '{}',
+  props: {},
 }
 
 const component = {
