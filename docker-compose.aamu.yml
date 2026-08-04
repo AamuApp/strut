@@ -10,6 +10,7 @@ services:
       - scripts/start-rindle-docker.mjs
     environment:
       RINDLE_PORT_BASE: 7550
+      RINDLE_DAEMON_TOKEN: rindle-dev-sql-token
     volumes:
       - slides-rindle-data:/var/lib/slides
     ports:

@@ -25,6 +25,8 @@ const child = spawn(
     cwd: runDir,
     env: {
       ...process.env,
+      RINDLE_DATABASE_TOKEN:
+        process.env.RINDLE_DAEMON_TOKEN || 'rindle-dev-sql-token',
       RINDLE_MIGRATIONS_DIR: '/app/migrations',
     },
     stdio: 'inherit',

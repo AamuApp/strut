@@ -467,6 +467,7 @@ const api = createRindleApiServer<User>({
     baseUrl: DAEMON_URL,
     headers: {
       authorization: `Bearer ${process.env.RINDLE_DAEMON_TOKEN ?? ''}`,
+      'x-rindle-token': process.env.RINDLE_DAEMON_TOKEN ?? '',
     },
   }),
   // `schema` drives the dialect SQL renderer for the LOGICAL mutator writes (tx.insert/update/…) AND
